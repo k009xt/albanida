@@ -1,0 +1,5 @@
+<a href="/" class="back-arrow" aria-label="Назад">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="40" height="40" fill="#555">
+        <path d="M16 12H4l5-5-1.41-1.41L0 12l9 9 1.41-1.41-5-5h12z"></path>
+    </svg>
+</a>
