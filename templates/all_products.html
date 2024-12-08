@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Все товары{% endblock %}
+
+{% block content %}
+    <h1>Все товары</h1>
+
+    <!-- Сводная информация -->
+    <div class="summary">
+        <p><strong>Общее количество разновидностей товаров:</strong> {{ summary.total_varieties }}</p>
+        <p><strong>Общее количество штук всех товаров:</strong> {{ summary.total_quantity }}</p>
+        <p><strong>Общее количество товаров по категориям:</strong></p>
+        <ul>
+            {% for category, count in summary.total_by_category.items() %}
+                <li>{{ category }}: {{ count }}</li>
+            {% endfor %}
+        </ul>
+        <p><strong>Сумма всех товаров по закупочной цене:</strong> {{ summary.total_cost_price }} рублей</p>
+        <p><strong>Сумма всех товаров по обычной цене:</strong> {{ summary.total_price }} рублей</p>
+    </div>
+
+    <!-- Таблица с данными из baza.xlsx -->
+    <table class="product-table">
+        <thead>
+            <tr>
+                {% for col in data[0].keys() %}
+                    <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+                <tr>
+                    {% for cell in row.values() %}
+                        <td>{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Кнопка для выгрузки таблицы -->
+    <form method="post" action="/download_excel">
+        <button type="submit">Выгрузить таблицу</button>
+    </form>
+{% endblock %}

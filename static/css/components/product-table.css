@@ -1,0 +1,54 @@
+/* Стили для сводной информации */
+.summary {
+    margin-bottom: 20px;
+}
+
+.summary p, .summary ul {
+    margin: 5px 0;
+}
+
+/* Стили для таблицы */
+.product-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.product-table th, .product-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+.product-table th {
+    background-color: #f2f2f2;
+    text-align: left;
+}
+
+.product-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.product-table tr:hover {
+    background-color: #ddd;
+}
+
+/* Кнопка выгрузки таблицы */
+form button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+}
+
+form button:hover {
+    background-color: #45a049;
+}
+/* Стили для сводной информации */
+.summary {
+    margin-bottom: 20px;
+}
+
+.summary p {
+    margin: 5px 0;
+}

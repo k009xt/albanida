@@ -1,0 +1,23 @@
+.social-links {
+    margin-bottom: 15px;
+}
+
+.social-links a {
+    display: inline-block;
+    margin: 0 10px;
+    text-decoration: none;
+    line-height: 0;
+}
+
+.social-logo {
+    width: 24px;
+    height: auto;
+    transition: transform 0.3s, filter 0.3s;
+    vertical-align: middle;
+    border: none;
+}
+
+.social-logo:hover {
+    transform: scale(1.2);
+    filter: brightness(1.2);
+}

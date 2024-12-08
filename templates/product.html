@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product['name'] }}{% endblock %}
+
+{% block content %}
+<script>
+    let currentImageIndex = 0;
+    let productImages = [];
+    let originalProductImages = [];
+    const product = {{ product | tojson }};
+
+    function loadProductImages(images) {
+        productImages = images;
+        if (productImages.length > 0) {
+            changeMainImage(0);
+        }
+    }
+
+    function changeMainImage(index) {
+        currentImageIndex = index;
+        const mainImage = document.getElementById('main-image');
+        if (productImages[currentImageIndex]) {
+            mainImage.src = productImages[currentImageIndex].src;
+        }
+    }
+
+    function addToCart() {
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+        // Проверка наличия размеров и цветов
+        const hasSizes = Object.keys(product['sizes_and_quantities'])
+            .some(size => size !== '' && size !== 'default');
+        const hasColors = Object.values(product['sizes_and_quantities']).some(colorObj =>
+            Object.keys(colorObj).some(color => color !== '' && color !== 'default')
+        );
+
+        let selectedColor = 'default';
+        let selectedSize = 'default';
+
+        // Логика выбора размера
+        if (hasSizes) {
+            const selectedSizeEl = document.querySelector('.size-swatch.selected');
+            if (selectedSizeEl) {
+                selectedSize = selectedSizeEl.innerText;
+            } else {
+                selectedSize = 'default';
+            }
+        }
+
+        // Логика выбора цвета
+        if (hasColors) {
+            const selectedColorEl = document.querySelector('.color-swatch.selected');
+            if (selectedColorEl) {
+                selectedColor = selectedColorEl.dataset.color;
+            } else {
+                selectedColor = 'default';
+            }
+        }
+
+        // Проверка количества товара
+        const quantity = product['sizes_and_quantities'][selectedSize]?.[selectedColor] || 0;
+        if (quantity <= 0) {
+            alert('Необходимо выбрать размер или цвет товара.');
+            return;
+        }
+
+        // Создание элемента корзины
+        const cartItem = {
+            id: product['id'],
+            name: product['name'],
+            price: product['price'],
+            size: selectedSize,
+            color: selectedColor,
+            image: productImages[0]?.src,
+            quantity: 1
+        };
+
+        // Обновление корзины
+        const existingItemIndex = cart.findIndex(item =>
+            item.id === cartItem.id &&
+            item.size === cartItem.size &&
+            item.color === cartItem.color
+        );
+
+        if (existingItemIndex !== -1) {
+            if (cart[existingItemIndex].quantity >= quantity) {
+                alert('Такого количества товара нет у продавца.');
+                return;
+            }
+            cart[existingItemIndex].quantity += 1;
+        } else {
+            cart.push(cartItem);
+        }
+
+        localStorage.setItem('cart', JSON.stringify(cart));
+        alert('Товар добавлен в корзину');
+        updateCartButton();
+    }
+
+    function updateCartButton() {
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+        const selectedColorEl = document.querySelector('.color-swatch.selected');
+        const selectedSizeEl = document.querySelector('.size-swatch.selected');
+
+        const selectedColor = selectedColorEl ? selectedColorEl.dataset.color : 'default';
+        const selectedSize = selectedSizeEl ? selectedSizeEl.innerText : 'default';
+
+        const cartItem = cart.find(item =>
+            item.id === product['id'] &&
+            item.color === selectedColor &&
+            item.size === selectedSize
+        );
+
+        const addToCartButton = document.querySelector('.add-to-cart-btn');
+        const goToCartButton = document.querySelector('.go-to-cart-btn');
+        const quantityControl = document.querySelector('.quantity-control');
+
+        if (cartItem) {
+            goToCartButton.style.display = 'inline-block';
+            addToCartButton.style.display = 'inline-block';
+            quantityControl.style.display = 'inline-block';
+
+            const quantityDisplay = document.querySelector('.cart-quantity');
+            quantityDisplay.textContent = cartItem.quantity;
+        } else {
+            goToCartButton.style.display = 'none';
+            addToCartButton.style.display = 'inline-block';
+            quantityControl.style.display = 'none';
+        }
+    }
+
+    function filterUnavailableSizes() {
+        document.querySelectorAll('.size-swatch').forEach(swatch => {
+            const size = swatch.id.replace('size-', '');
+
+            // Для товаров без размеров
+            if (size === '') {
+                const hasValidQuantity = Object.entries(product['sizes_and_quantities'][''] || {})
+                    .some(([color, qty]) => color !== 'default' && qty > 0);
+
+                if (!hasValidQuantity) {
+                    swatch.style.display = 'none';
+                }
+                return;
+            }
+
+            // Для товаров с размерами
+            const hasValidQuantity = Object.entries(product['sizes_and_quantities'][size] || {})
+                .some(([color, qty]) => color !== 'default' && qty > 0);
+
+            if (!hasValidQuantity) {
+                swatch.style.display = 'none';
+            }
+        });
+    }
+    // Функция для выбора цвета
+    function selectColor(colorElement) {
+        // Сброс предыдущего выбора
+        document.querySelectorAll('.color-swatch').forEach(el =>
+            el.classList.remove('selected')
+        );
+
+        // Выбор текущего цвета
+        colorElement.classList.add('selected');
+
+        // Обновление доступных размеров для выбранного цвета, только если есть размеры
+        if (hasSizes()) {
+            updateAvailableSizes(colorElement.dataset.color);
+        } else {
+            updateAvailableSizes('default');
+        }
+    }
+
+    function selectSize(sizeElement) {
+        // Сброс предыдущего выбора
+        document.querySelectorAll('.size-swatch').forEach(el =>
+            el.classList.remove('selected')
+        );
+
+        // Выбор текущего размера
+        sizeElement.classList.add('selected');
+
+        // Обновление доступных цветов для выбранного размера
+        updateAvailableColors(sizeElement.innerText || 'default');
+    }
+
+    // Функция для обновления доступных цветов на основе выбранного размера
+    function updateAvailableColors(selectedSize) {
+        const colorSwatches = document.querySelectorAll('.color-swatch');
+        colorSwatches.forEach(colorEl => {
+            const color = colorEl.dataset.color;
+            const availableQuantity = product['sizes_and_quantities'][selectedSize]?.[color] || 0;
+
+            if (availableQuantity > 0) {
+                colorEl.classList.remove('disabled');
+            } else {
+                colorEl.classList.add('disabled');
+            }
+        });
+    }
+
+    // Функция для обновления доступных размеров на основе выбранного цвета
+    function updateAvailableSizes(selectedColor) {
+        const sizeSwatches = document.querySelectorAll('.size-swatch');
+        sizeSwatches.forEach(sizeEl => {
+            const size = sizeEl.innerText;
+            const availableQuantity = product['sizes_and_quantities'][size]?.[selectedColor] || 0;
+
+            if (availableQuantity > 0) {
+                sizeEl.classList.remove('disabled');
+            } else {
+                sizeEl.classList.add('disabled');
+            }
+        });
+    }
+
+    // Проверка наличия размеров
+    function hasSizes() {
+        return Object.keys(product['sizes_and_quantities'])
+            .some(size =>
+                size !== '' &&
+                Object.keys(product['sizes_and_quantities'][size]).some(color =>
+                    color !== 'default' && product['sizes_and_quantities'][size][color] > 0
+                )
+            );
+    }
+
+    // Добавляем функцию для переключения дополнительной информации
+    function toggleAdditionalInfo() {
+        const additionalInfo = document.getElementById('additional-info');
+        if (additionalInfo) {
+            additionalInfo.classList.toggle('open'); // Добавляем/удаляем класс 'open'
+        }
+    }
+
+    // Улучшаем функцию goToCart для добавления счетчика и управления количеством
+    function goToCart() {
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+        const cartButton = document.querySelector('.go-to-cart-btn');
+
+        // Создаем контейнер для управления количеством
+        const cartControlContainer = document.createElement('div');
+        cartControlContainer.className = 'cart-control-container';
+
+        const totalQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+        cartControlContainer.innerHTML = `
+            <button class="cart-quantity-minus">-</button>
+            <span class="cart-quantity">${totalQuantity}</span>
+            <button class="cart-quantity-plus">+</button>
+            <button class="go-to-cart-main-btn">В корзину</button>
+        `;
+
+        // Добавляем обработчики событий для кнопок
+        cartControlContainer.querySelector('.cart-quantity-minus').addEventListener('click', () => {
+            decreaseCartQuantity();
+        });
+
+        cartControlContainer.querySelector('.cart-quantity-plus').addEventListener('click', () => {
+            increaseCartQuantity();
+        });
+
+        cartControlContainer.querySelector('.go-to-cart-main-btn').addEventListener('click', () => {
+            window.location.href = '/cart';
+        });
+
+        // Заменяем текущую кнопку на новый контейнер
+        cartButton.parentNode.replaceChild(cartControlContainer, cartButton);
+    }
+
+    function initializeSwatches() {
+        document.querySelectorAll('.color-swatch').forEach(swatch => {
+            swatch.addEventListener('click', () => {
+                handleSwatchClick(swatch, 'color');
+            });
+        });
+
+        document.querySelectorAll('.size-swatch').forEach(swatch => {
+            swatch.addEventListener('click', () => {
+                handleSwatchClick(swatch, 'size');
+            });
+        });
+    }
+
+    function handleSwatchClick(swatch, type) {
+        const swatches = document.querySelectorAll(`.${type}-swatch`);
+        const isSelected = swatch.classList.contains('selected');
+
+        swatches.forEach(s => s.classList.remove('selected'));
+
+        if (!isSelected) {
+            swatch.classList.add('selected');
+        }
+
+        if (type === 'color') {
+            filterByColor(swatch.dataset.color);
+        } else if (type === 'size') {
+            filterBySize(swatch.id.replace('size-', ''));
+        }
+
+        updateCartButton();
+    }
+
+    function filterByColor(color) {
+        const selectedColorSwatch = document.querySelector('.color-swatch.selected');
+        if (selectedColorSwatch) {
+            selectedColorSwatch.classList.remove('selected');
+            if (selectedColorSwatch.dataset.color === color) {
+                resetSizeSwatches();
+                loadProductImages(originalProductImages);
+                return;
+            }
+        }
+
+        const swatch = document.querySelector(`.color-swatch[data-color="${color}"]`);
+        swatch.classList.add('selected');
+
+        const availableSizes = Object.keys(product['sizes_and_quantities']).filter(size => product['sizes_and_quantities'][size][color] > 0);
+        toggleSizeSwatches(availableSizes);
+
+        const filteredImages = originalProductImages.filter(img => img.color === color);
+        loadProductImages(filteredImages.length > 0 ? filteredImages : originalProductImages);
+    }
+
+    function filterBySize(size) {
+        const selectedSizeSwatch = document.querySelector('.size-swatch.selected');
+        if (selectedSizeSwatch) {
+            selectedSizeSwatch.classList.remove('selected');
+            if (selectedSizeSwatch.id === `size-${size}`) {
+                resetColorSwatches();
+                loadProductImages(originalProductImages);
+                return;
+            }
+        }
+
+        const swatch = document.querySelector(`#size-${size}`);
+        swatch.classList.add('selected');
+
+        const availableColors = product['sizes_and_quantities'][size];
+        toggleColorSwatches(availableColors);
+    }
+
+    function toggleColorSwatches(availableColors) {
+        document.querySelectorAll('.color-swatch').forEach(swatch => {
+            const color = swatch.dataset.color;
+            if (availableColors[color] && typeof availableColors[color] === 'number') {
+                swatch.classList.remove('inactive');
+            } else {
+                swatch.classList.add('inactive');
+            }
+        });
+    }
+
+    function toggleSizeSwatches(availableSizes) {
+        document.querySelectorAll('.size-swatch').forEach(swatch => {
+            const size = swatch.id.replace('size-', '');
+            if (availableSizes.includes(size)) {
+                swatch.classList.remove('inactive');
+            } else {
+                swatch.classList.add('inactive');
+            }
+        });
+    }
+
+    function resetSizeSwatches() {
+        document.querySelectorAll('.size-swatch').forEach(swatch => {
+            swatch.classList.remove('inactive');
+        });
+    }
+
+    function resetColorSwatches() {
+        document.querySelectorAll('.color-swatch').forEach(swatch => {
+            swatch.classList.remove('inactive');
+        });
+    }
+
+    function setupTouchEvents() {
+        const imageSlider = document.getElementById('image-slider-{{ product['name'] }}');
+        let startTouch = 0;
+
+        if (imageSlider) {
+            imageSlider.addEventListener('touchstart', function (e) {
+                startTouch = e.changedTouches[0].pageX;
+            });
+
+            imageSlider.addEventListener('touchend', function (e) {
+                let endTouch = e.changedTouches[0].pageX;
+                if (startTouch > endTouch + 50) {
+                    nextImage();
+                } else if (startTouch < endTouch - 50) {
+                    prevImage();
+                }
+            });
+        }
+    }
+
+        function nextImage() {
+            if (productImages.length > 0) {
+                const nextIndex = (currentImageIndex + 1) % productImages.length;
+                changeMainImage(nextIndex);
+            }
+        }
+
+        function prevImage() {
+            if (productImages.length > 0) {
+                const prevIndex = (currentImageIndex - 1 + productImages.length) % productImages.length;
+                changeMainImage(prevIndex);
+            }
+        }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const images = [
+            {% for image in product['images'] | sort(attribute='Позиция') %}
+                {src: '{{ url_for('static', filename='images/' ~ image['Ссылка']) }}', color: '{{ image['Цвет'] }}'},
+            {% endfor %}
+        ];
+        originalProductImages = images;
+        loadProductImages(images);
+
+        initializeSwatches();
+        updateCartButton();
+        setupTouchEvents();
+        filterUnavailableSizes();
+    });
+    function filterUnavailableSizes() {
+        document.querySelectorAll('.size-swatch').forEach(swatch => {
+            const size = swatch.id.replace('size-', '');
+            const hasValidQuantity = Object.entries(product['sizes_and_quantities'][size] || {})
+                .some(([color, qty]) => qty > 0);
+
+            if (!hasValidQuantity || size.trim() === '') {
+                swatch.style.display = 'none';
+            }
+        });
+    }
+    function increaseCartQuantity() {
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+        const selectedColorEl = document.querySelector('.color-swatch.selected');
+        const selectedSizeEl = document.querySelector('.size-swatch.selected');
+
+        const selectedColor = selectedColorEl ? selectedColorEl.dataset.color : 'default';
+        const selectedSize = selectedSizeEl ? selectedSizeEl.innerText : 'default';
+
+        const cartItemIndex = cart.findIndex(item =>
+            item.id === product['id'] &&
+            item.color === selectedColor &&
+            item.size === selectedSize
+        );
+
+        if (cartItemIndex !== -1) {
+            const currentQuantity = cart[cartItemIndex].quantity;
+            const availableQuantity = product['sizes_and_quantities'][selectedSize]?.[selectedColor] || 0;
+
+            if (currentQuantity < availableQuantity) {
+                cart[cartItemIndex].quantity += 1;
+                localStorage.setItem('cart', JSON.stringify(cart));
+                updateCartButton();
+            } else {
+                alert('Такого количества товара нет у продавца.');
+            }
+        }
+    }
+
+    function decreaseCartQuantity() {
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+        const selectedColorEl = document.querySelector('.color-swatch.selected');
+        const selectedSizeEl = document.querySelector('.size-swatch.selected');
+
+        const selectedColor = selectedColorEl ? selectedColorEl.dataset.color : 'default';
+        const selectedSize = selectedSizeEl ? selectedSizeEl.innerText : 'default';
+
+        const cartItemIndex = cart.findIndex(item =>
+            item.id === product['id'] &&
+            item.color === selectedColor &&
+            item.size === selectedSize
+        );
+
+        if (cartItemIndex !== -1) {
+            cart[cartItemIndex].quantity -= 1;
+            if (cart[cartItemIndex].quantity <= 0) {
+                cart.splice(cartItemIndex, 1);
+            }
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartButton();
+        }
+    }
+    // Инициализация кнопок управления количеством при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function () {
+        updateCartButton();
+    });
+</script>
+    <!-- Кнопка "Назад" -->
+    <a href="/" class="back-button">Назад</a>
+    <h1>{{ product['name'] }}</h1>
+    <div class="image-slider" id="image-slider-{{ product['name'] }}">
+        <span class="prev" onclick="prevImage()">&#10094;</span>
+        <img id="main-image" class="main-image" alt="{{ product['name'] }}">
+        <span class="next" onclick="nextImage()">&#10095;</span>
+    </div>
+    <div class="thumbnails-container" id="thumbnails-container-{{ product['name'] }}">
+        {% for image in product['images'] | sort(attribute='Позиция') %}
+            <img src="{{ url_for('static', filename='images/' ~ image['Ссылка']) }}"
+                 class="thumbnail"
+                 onclick="changeMainImage({{ loop.index0 }})"
+                 alt="{{ product['name'] }}">
+        {% endfor %}
+    </div>
+    <div class="color-options">
+        {% set unique_colors = [] %}
+        {% for size, colors in product['sizes_and_quantities'].items() %}
+            {% for color, quantity in colors.items() %}
+                {% if color != 'default' and quantity|int > 0 and color not in unique_colors %}
+                    {% set unique_colors = unique_colors + [color] %}
+                    <div class="color-swatch" style="background-color: {{ color | get_color }};" data-color="{{ color }}" onclick="filterByColor('{{ color }}')"></div>
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+    </div>
+    <div class="size-options">
+        {% set unique_sizes = [] %}
+        {% for size, colors in product['sizes_and_quantities'].items() %}
+            {% set total_quantity = colors.values() | sum %}
+            {% if total_quantity > 0 and size != 'default' and size not in unique_sizes %}
+                {% set unique_sizes = unique_sizes + [size] %}
+                <div class="size-swatch" id="size-{{ size }}" onclick="filterBySize('{{ size }}')">{{ size }}</div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    <p><strong>Цена:</strong> {{ product['price'] }} рублей</p>
+    <p><strong>Описание:</strong> {{ product['description'] }}</p>
+    <div>
+        <p><strong>Размеры и количество:</strong></p>
+        <ul>
+            {% for size, colors in product['sizes_and_quantities'].items() %}
+                {% if size != 'default' %}
+                    {% for color, quantity in colors.items() %}
+                        {% if quantity > 0 %}
+                            <li>{{ size }}{% if color != 'default' %} - {{ color }}{% endif %} - {{ quantity }} шт.</li>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    {% for color, quantity in colors.items() %}
+                        {% if color != 'default' and quantity > 0 %}
+                            <li>{{ color }} - {{ quantity }} шт.</li>
+                        {% endif %}
+                        {% if color == 'default' and quantity > 0 %}
+                            <li>{{ quantity }} шт.</li>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+    <a onclick="toggleAdditionalInfo()" class="additional-info-link">Дополнительная информация</a>
+    <div id="additional-info" class="additional-info">
+        <p><strong>Пол:</strong> {{ product['additional_info']['gender'] }}</p>
+        <p><strong>Сезон:</strong> {{ product['additional_info']['season'] }}</p>
+        <p><strong>Категория:</strong> {{ product['additional_info']['category'] }}</p>
+    </div>
+    <!-- Кнопка для добавления товара в корзину -->
+    <div class="button-group">
+        <button onclick="addToCart()" class="btn btn-primary add-to-cart-btn">Добавить в корзину</button>
+        <button onclick="goToCart()" class="btn btn-secondary go-to-cart-btn" style="display: none;">Перейти в корзину</button>
+        <div class="quantity-control" style="display: none;">
+            <button class="quantity-minus" onclick="decreaseCartQuantity()">-</button>
+            <span class="cart-quantity">0</span>
+            <button class="quantity-plus" onclick="increaseCartQuantity()">+</button>
+        </div>
+        <a href="{{ whatsapp_link }}" target="_blank" class="whatsapp-button">
+            Купить через WhatsApp
+        </a>
+    </div>
+{% endblock %}

@@ -1,0 +1,14 @@
+body.dark-mode {
+    background-color: #393636;
+    color: white;
+}
+
+body.dark-mode .modal-content {
+    background-color: #666;
+    color: white;
+}
+
+body.dark-mode .product-tile {
+    background-color: #444;
+    color: white;
+}

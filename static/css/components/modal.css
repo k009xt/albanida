@@ -1,0 +1,10 @@
+#sellModal .modal-dialog {
+    max-width: 600px;
+    width: 90%;
+}
+
+#sellModal .modal-content {
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}

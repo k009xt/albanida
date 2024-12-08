@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+
+{% block title %}Товары{% endblock %}
+
+{% block content %}
+    <script>
+        function showMenu(event, btn) {
+            event.stopPropagation(); // Остановить всплытие события
+            const menu = btn.nextElementSibling; // Получаем следующий элемент (меню)
+
+            // Скрываем все другие меню
+            const menus = document.querySelectorAll('.menu');
+            menus.forEach(m => {
+                if (m !== menu) {
+                    m.style.display = 'none';
+                }
+            });
+
+            // Переключаем видимость текущего меню
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // Скрыть меню при клике вне меню
+        document.addEventListener('click', function(event) {
+            const menus = document.querySelectorAll('.menu');
+            menus.forEach(menu => {
+                if (!menu.contains(event.target) && !menu.previousElementSibling.contains(event.target)) {
+                    menu.style.display = 'none';
+                }
+            });
+        });
+
+        function deleteProduct(productId) {
+            if (confirm('Вы уверены, что хотите удалить этот товар?')) {
+                // Отменяем любые стандартные действия
+                event.preventDefault();
+                event.stopPropagation();
+
+                fetch(`/delete_product/${productId}`, {
+                    method: 'POST'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Перезагружаем страницу или перенаправляем
+                        window.location.replace('/');
+                    } else {
+                        throw new Error('Ошибка при удалении');
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка:', error);
+                    alert('Не удалось удалить товар');
+                });
+            }
+        }
+
+        function editProduct(event, productId) {
+            event.preventDefault();
+            window.location.href = `/edit_product/${productId}`;  // Переход на страницу редактирования
+        }
+
+        function sellProduct(event, productId) {
+            event.stopPropagation();
+            fetch(`/api/product/${productId}`)
+                .then(response => response.json())
+                .then(product => {
+                    if (product.error) {
+                        alert(product.error);
+                        return;
+                    }
+
+                    console.log('Product data:', product); // Лог для проверки данных
+
+                    const modal = document.getElementById('sellModal');
+                    const sellProductNameElement = modal.querySelector('#sellProductName');
+                    sellProductNameElement.innerText = product['name'];
+                    sellProductNameElement.setAttribute('data-product-id', productId); // Сохраняем ID товара в атрибуте
+
+                    modal.querySelector('#sellPrice').value = product['price'];
+
+                    const sizesAndQuantities = product['sizes_and_quantities'];
+
+                    let options = '';
+                    let sizesQuantitiesHtml = '';
+                    for (const size in sizesAndQuantities) {
+                        for (const color in sizesAndQuantities[size]) {
+                            if (sizesAndQuantities[size][color] > 0) {
+                                options += `<option value="${size}_${color}">${size} - ${color} (${sizesAndQuantities[size][color]} шт.)</option>`;
+                                sizesQuantitiesHtml += `<li>${size} - ${color} (${sizesAndQuantities[size][color]} шт.)</li>`;
+                            }
+                        }
+                    }
+
+                    modal.querySelector('#sellOptions').innerHTML = options;
+                    modal.querySelector('#sellSizesQuantities').innerHTML = sizesQuantitiesHtml;
+
+                    $('#sellModal').modal('show');
+                })
+                .catch(error => {
+                    console.error('Failed to fetch product data:', error);
+                });
+        }
+
+        let inactivityTimeout;
+
+        function resetDotsVisibility(productId) {
+            const dots = document.getElementById(`dots-indicator-${productId}`);
+            if (dots) {
+                dots.style.display = 'none';
+            }
+        }
+
+        function showDotsIndicator(productId) {
+            const dots = document.getElementById(`dots-indicator-${productId}`);
+            if (dots) {
+                dots.style.display = 'flex';
+            }
+        }
+
+        function updateActiveDot(productId, currentIndex) {
+            const dots = document.querySelectorAll(`#dots-indicator-${productId} .dot`);
+            dots.forEach((dot, index) => {
+                if (index === currentIndex) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+        }
+
+        function nextImage(event, productName) {
+            event.stopPropagation();
+            const productData = document.getElementById(`product-data-${productName}`).innerText;
+            const product = JSON.parse(productData);
+
+            if (!product || !product.images) {
+                console.error("Нет доступных изображений для этого товара.");
+                return;
+            }
+
+            const imgElement = document.getElementById(`product-img-${productName}`);
+            const currentSrc = decodeURIComponent(imgElement.src.split('/').pop());
+            let currentIndex = product.images.findIndex(img => img.Ссылка === currentSrc);
+
+            if (currentIndex === -1) {
+                console.error(`Текущий источник изображения не найден: ${currentSrc}`);
+                return;
+            }
+
+            currentIndex = (currentIndex + 1) % product.images.length;
+            imgElement.src = `/static/images/${product.images[currentIndex].Ссылка}`;
+
+            // Обновление индикатора
+            updateActiveDot(productName, currentIndex);
+            showDotsIndicator(productName);
+        }
+
+        function prevImage(event, productName) {
+            event.stopPropagation();
+            const productData = document.getElementById(`product-data-${productName}`).innerText;
+            const product = JSON.parse(productData);
+
+            if (!product || !product.images) {
+                console.error("Нет доступных изображений для этого товара.");
+                return;
+            }
+
+            const imgElement = document.getElementById(`product-img-${productName}`);
+            const currentSrc = decodeURIComponent(imgElement.src.split('/').pop());
+            let currentIndex = product.images.findIndex(img => img.Ссылка === currentSrc);
+
+            if (currentIndex === -1) {
+                console.error(`Текущий источник изображения не найден: ${currentSrc}`);
+                return;
+            }
+
+            currentIndex = (currentIndex - 1 + product.images.length) % product.images.length;
+            imgElement.src = `/static/images/${product.images[currentIndex].Ссылка}`;
+
+            // Обновление индикатора
+            updateActiveDot(productName, currentIndex);
+            showDotsIndicator(productName);
+        }
+
+        function openProduct(event, productID) {
+            event.stopPropagation();
+            window.location.href = `/product/${productID}`;        }
+
+        function confirmSellProduct() {
+            const productId = document.getElementById('sellProductName').getAttribute('data-product-id'); // Получаем ID товара
+            const sellPrice = document.getElementById('sellPrice').value;
+            const [size, color] = document.getElementById('sellOptions').value.split('_');
+            const quantity = document.getElementById('sellQuantity').value;
+
+            if (!quantity || quantity <= 0) {
+                alert('Введите корректное количество.');
+                return;
+            }
+
+            fetch('/confirm_sell', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    id: productId,
+                    size: size,
+                    color: color,
+                    quantity: quantity,
+                    price: sellPrice
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`Ошибка: ${data.error}`);
+                } else {
+                    alert('Продажа успешно зарегистрирована.');
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при подтверждении продажи:', error);
+            });
+
+            $('#sellModal').modal('hide');
+        }
+
+        function toggleAdditionalInfo() {
+            const info = document.getElementById('modalAdditionalInfo');
+            info.style.display = (info.style.display === 'none' || info.style.display === '') ? 'block' : 'none';
+        }
+    </script>
+    <!-- Переключатель тем -->
+    <div id="themeToggle" class="theme-toggle">
+        <span class="theme-toggle-text light">Light</span>
+        <label class="switch">
+            <input type="checkbox" id="themeToggleSwitch">
+            <span class="slider"></span>
+        </label>
+        <span class="theme-toggle-text dark">Dark</span>
+    </div>
+        <header>
+            <a href="/">
+                <img src="/static/css/logo.png" alt="Логотип магазина" class="store-logo">
+            </a>
+        </header>
+        <h1>Albanida.kids</h1>
+        {% if role == 'admin' %}
+        <a href="/add_product">Добавить новый товар</a>
+        {% endif %}
+    <main>
+        <div class="product-grid">
+            {% for product in products %}
+                <div class="product-tile" onclick="openProduct(event, '{{ product['ID'] }}')"> <!-- Изменено -->
+                    <div class="image-slider">
+                        <button class="prev" onclick="prevImage(event, '{{ product['ID'] }}')">&#10094;</button>
+                        <img id="product-img-{{ product['ID'] }}" src="{% if product['images'] and product['images'] | length > 0 %}{{ url_for('static', filename='images/' ~ product['images'][0]['Ссылка']) }}{% else %}{{ url_for('static', filename='images/default.jpg') }}{% endif %}" class="product-img" alt="{{ product['Наименование_товара'] }}">
+                        <button class="next" onclick="nextImage(event, '{{ product['ID'] }}')">&#10095;</button>
+                        <div class="dots-indicator" id="dots-indicator-{{ product['ID'] }}">
+                            {% for i in range(product['images'] | length) %}
+                            <span class="dot{% if i == 0 %} active{% endif %}" id="dot-{{ product['ID'] }}-{{ i }}"></span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="product-info">
+                        <h2>{{ product['Наименование_товара'] }}</h2>
+                        <p>Цена: {{ product['Цена'] }} рублей</p>
+                    </div>
+                    {% if role == 'admin' %}
+                    <button class="menu-btn" onclick="showMenu(event, this)">&#x2022;&#x2022;&#x2022;</button>
+                    <div class="menu">
+                        <a href="/edit_product/{{ product['ID'] }}" class="edit-button">Редактировать</a>
+                        <a href="#" class="delete" onclick="deleteProduct('{{ product['ID'] }}')">Удалить</a>
+                        <a href="#" onclick="sellProduct(event, '{{ product['ID'] }}')">Продать</a>
+                    </div>
+                    {% endif %}
+                    <script type="text/template" id="product-data-{{ product['ID'] }}">
+                        {{ product | tojson | safe }}
+                    </script>
+                </div>
+            {% endfor %}
+        </div>
+    </main>
+    <div class="sidebar" id="sidebar">
+        <a href="#" class="closebtn" onclick="closeNav()">&times;</a>
+        <a href="/all_products">Все товары</a>
+        <a href="/sales_report">Отчет по продажам</a>
+    </div>
+
+    <span class="menu-icon" onclick="openNav()">&#9776;</span>
+    <footer>
+        <div class="social-links">
+            <a href="https://www.avito.ru/user/588904bdd44deff35a9611b16917232a/profile?src=sharing" target="_blank">
+                <img src="/static/css/avito.png" alt="Авито" class="social-logo">
+            </a>
+            <a href="https://www.instagram.com/albanida.kids?igsh=MTF4OWpxMGhsaWdmaA==" target="_blank">
+                <img src="/static/css/instagram.png" alt="Инстаграм" class="social-logo">
+            </a>
+        </div>
+        <p>© 2024 Albanida.kids</p>
+    </footer>
+    <script>
+        function openNav() {
+            document.getElementById("sidebar").style.width = "250px";
+        }
+
+        function closeNav() {
+            document.getElementById("sidebar").style.width = "0";
+        }
+
+        function handleSwipe(element, productName) {
+            let touchstartX = 0;
+            let touchendX = 0;
+
+            element.addEventListener('touchstart', function(event) {
+                touchstartX = event.changedTouches[0].screenX;
+            });
+
+            element.addEventListener('touchend', function(event) {
+                touchendX = event.changedTouches[0].screenX;
+                handleGesture();
+            });
+
+            function handleGesture() {
+                const threshold = 50; // Минимальное расстояние для регистрации свайпа
+                if (touchendX < touchstartX - threshold) {
+                    nextImage(new Event('click'), productName);
+                }
+                if (touchendX > touchstartX + threshold) {
+                    prevImage(new Event('click'), productName);
+                }
+            }
+        }
+
+        function nextImage(event, productName) {
+            event.stopPropagation();
+            const productData = JSON.parse(document.getElementById(`product-data-${productName}`).innerText);
+            const imgElement = document.getElementById(`product-img-${productName}`);
+            const currentSrc = decodeURIComponent(imgElement.src.split('/').pop());
+            let currentIndex = productData.images.findIndex(img => img.Ссылка === currentSrc);
+
+            if (currentIndex === -1) {
+                console.error(`Текущий источник изображения не найден: ${currentSrc}`);
+                return;
+            }
+
+            currentIndex = (currentIndex + 1) % productData.images.length;
+            imgElement.src = `/static/images/${productData.images[currentIndex].Ссылка}`;
+            updateActiveDot(productName, currentIndex);
+            showDotsIndicator(productName);
+        }
+
+        function prevImage(event, productName) {
+            event.stopPropagation();
+            const productData = JSON.parse(document.getElementById(`product-data-${productName}`).innerText);
+            const imgElement = document.getElementById(`product-img-${productName}`);
+            const currentSrc = decodeURIComponent(imgElement.src.split('/').pop());
+            let currentIndex = productData.images.findIndex(img => img.Ссылка === currentSrc);
+
+            if (currentIndex === -1) {
+                console.error(`Текущий источник изображения не найден: ${currentSrc}`);
+                return;
+            }
+
+            currentIndex = (currentIndex - 1 + productData.images.length) % productData.images.length;
+            imgElement.src = `/static/images/${productData.images[currentIndex].Ссылка}`;
+            updateActiveDot(productName, currentIndex);
+            showDotsIndicator(productName);
+        }
+
+        function updateActiveDot(productId, currentIndex) {
+            const dots = document.querySelectorAll(`#dots-indicator-${productId} .dot`);
+            dots.forEach((dot, index) => {
+                if (index === currentIndex) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+        }
+
+        function showDotsIndicator(productId) {
+            const dots = document.getElementById(`dots-indicator-${productId}`);
+            if (dots) {
+                dots.style.display = 'flex';
+            }
+        }
+
+        // Обеспечиваем привязку свайпов к продуктовым тайлам при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            const productTiles = document.querySelectorAll('.product-tile');
+            productTiles.forEach(tile => {
+                const productName = tile.getAttribute('onclick').match(/'([^']+)'/)[1];
+                handleSwipe(tile, productName);
+            });
+        });
+    </script>
+    <!-- Модальное окно для продажи товара -->
+    <div class="modal fade" id="sellModal" tabindex="-1" aria-labelledby="sellModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sellModalLabel">Продажа товара</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="sellForm">
+                        <div class="form-group">
+                            <label for="sellProductName">Наименование товара</label>
+                            <p id="sellProductName" class="form-control-static" data-product-id=""></p>
+                        </div>
+                        <div class="form-group">
+                            <label for="sellPrice">Цена</label>
+                            <input type="number" class="form-control" id="sellPrice" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sellOptions">Размер и цвет</label>
+                            <select class="form-control" id="sellOptions" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sellQuantity">Количество</label>
+                            <input type="number" class="form-control" id="sellQuantity" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <p><strong>Размеры и количество:</strong></p>
+                            <ul id="sellSizesQuantities">
+                                <!-- Информация о размерах и цветах будет добавлена здесь -->
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="confirmSellProduct()">Продать</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+{% endblock %}

@@ -1,0 +1,35 @@
+.product-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: space-between;
+}
+
+.main-image {
+    width: 300px;
+    border-radius: 15px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.additional-info {
+    display: none;
+}
+
+.thumbnails-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.thumbnail {
+    width: 45px;
+    height: 60px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    padding: 5px;
+    transition: transform 0.3s ease;
+    object-fit: cover;
+    cursor: pointer;
+}

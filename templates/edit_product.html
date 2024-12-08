@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Изменить товар {{ product['name'] }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+        <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <a href="/" class="back-button">Отмена</a>
+    <h1>Изменить товар {{ product['name'] }}</h1>
+    <form id="product-form" method="post" enctype="multipart/form-data" action="/save_product">
+        <input type="hidden" name="product_id" value="{{ product['id'] }}">
+        <!-- Новое поле для изменения наименования товара -->
+        <label for="edit-name">Наименование товара:</label>
+        <input type="text" id="edit-name" name="name" value="{{ product['name'] }}" required><br>
+        <label for="edit-price">Цена:</label>
+        <input type="number" id="edit-price" name="price" value="{{ product['price'] }}" required><br>
+        <label for="edit-cost-price">Закупочная цена:</label>
+        <input type="number" id="edit-cost-price" name="cost_price" value="{{ product['cost_price'] | int }}" required><br>
+        <label for="edit-description">Описание:</label>
+        <textarea id="edit-description" name="description" required>{{ product['description'] }}</textarea><br>
+        <label>Информация о размерах, цветах и количестве:</label>
+        <table id="size-color-quantity-table">
+            <thead>
+                <tr>
+                    <th>Размер</th>
+                    <th>Цвет</th>
+                    <th>Количество</th>
+                    <th>Удалить</th>
+                </tr>
+            </thead>
+                <tbody>
+                    {% for size, colors in product['sizes_and_quantities'].items() %}
+                        {% for color, quantity in colors.items() %}
+                            <tr>
+                                <td><input type="text" name="sizes[]" value="{{ size if size != 'default' else '' }}"></td>
+                                <td>
+                                    <input type="text" name="colors[]" value="{{ color if color != 'default' else '' }}" oninput="updateColor(this)">
+                                    <div class="color-option" style="background-color: {{ color | get_color }};" data-color="{{ color }}" onclick="selectColor(this)"></div>
+                                </td>
+                                <td><input type="number" name="quantities[]" value="{{ quantity }}" required></td>
+                                <td><button type="button" onclick="removeRow(this)">&#x2716;</button></td>
+                            </tr>
+                        {% endfor %}
+                        {% if colors|length == 0 %}
+                            <tr>
+                                <td><input type="text" name="sizes[]" value="{{ size if size != 'default' else '' }}"></td>
+                                <td><input type="text" name="colors[]" value="" oninput="updateColor(this)"></td>
+                                <td><input type="number" name="quantities[]" value="0" required></td>
+                                <td><button type="button" onclick="removeRow(this)">&#x2716;</button></td>
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+        </table>
+        <button type="button" onclick="addRow()">&#x271A;</button><br>
+        <label for="edit-gender">Пол:</label>
+        <select id="edit-gender" name="gender" required>
+            <option value="Мальчики" {% if product['additional_info']['gender'] == "Мальчики" %}selected{% endif %}>Мальчики</option>
+            <option value="Девочки" {% if product['additional_info']['gender'] == "Девочки" %}selected{% endif %}>Девочки</option>
+            <option value="Универсал" {% if product['additional_info']['gender'] == "Универсал" %}selected{% endif %}>Универсал</option>
+        </select><br>
+        <label for="edit-season">Сезон:</label>
+        <select id="edit-season" name="season" required>
+            <option value="Осень-весна" {% if product['additional_info']['season'] == "Осень-весна" %}selected{% endif %}>Осень-весна</option>
+            <option value="Лето" {% if product['additional_info']['season'] == "Лето" %}selected{% endif %}>Лето</option>
+            <option value="Зима" {% if product['additional_info']['season'] == "Зима" %}selected{% endif %}>Зима</option>
+        </select><br>
+        <!-- Новое поле для категории -->
+        <label for="edit-category">Категория:</label>
+        <input type="text" id="edit-category" name="category" value="{{ product['additional_info']['category'] }}" required><br>
+        <label for="edit-photo">Выберите фото:</label>
+        <input type="file" id="edit-photo" name="photo" accept="image/*" multiple><br>
+        <div id="photo-previews" class="sortable">
+            {% for image in product['images'] | sort(attribute='Позиция') %}
+                <div class="image-container" draggable="true" data-id="{{ image['Ссылка'] }}">
+                    <img src="{{ url_for('static', filename='images/' ~ image['Ссылка']) }}" class="thumbnail">
+                    <button type="button" class="delete-button" onclick="deleteImage('{{ image['Ссылка'] }}')">&#x2716;</button>
+                </div>
+            {% endfor %}
+        </div>
+        <button type="submit">Сохранить</button>
+    </form>
+    <div id="crop-modal">
+        <div class="modal-content">
+            <img id="crop-image" alt="Изображение для обрезки">
+            <div class="action-buttons">
+                <button id="crop-apply" class="apply">&#x2714;</button> <!-- Зеленая галочка -->
+                <button id="crop-cancel" class="cancel">&#x2716;</button> <!-- Красный крестик -->
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <script>
+        // Установим обработчики событий для перетаскивания
+        const sortable = document.querySelector('.sortable');
+        let draggingItem;
+        let touchStartY = 0;
+
+        sortable.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('image-container')) {
+                draggingItem = e.target;
+                e.target.classList.add('dragging');
+            }
+        });
+
+        sortable.addEventListener('dragend', (e) => {
+            if (e.target.classList.contains('image-container')) {
+                e.target.classList.remove('dragging');
+                draggingItem = null;
+            }
+        });
+
+        sortable.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(sortable, e.clientY);
+
+            if (afterElement) {
+                // Вставляем перед найденным элементом
+                sortable.insertBefore(draggingItem, afterElement);
+            } else {
+                // Если нет подходящего элемента, вставляем в конец контейнера
+                sortable.appendChild(draggingItem);
+            }
+        });
+        // Перетаскивание на мобильных устройствах
+        sortable.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+
+            if (target && target.classList.contains('image-container')) {
+                draggingItem = target;
+                draggingItem.classList.add('dragging');
+            }
+        });
+
+        sortable.addEventListener('touchmove', (e) => {
+            if (!draggingItem) return;
+
+            e.preventDefault();
+            const touch = e.touches[0];
+            const afterElement = getDragAfterElement(sortable, touch.clientY);
+
+            if (afterElement == null) {
+                sortable.appendChild(draggingItem);
+            } else {
+                sortable.insertBefore(draggingItem, afterElement);
+            }
+        });
+
+        sortable.addEventListener('touchend', () => {
+            if (draggingItem) {
+                draggingItem.classList.remove('dragging');
+                draggingItem = null;
+            }
+        });
+
+        function getDragAfterElement(container, y) {
+            // Выбираем все элементы, которые можно перетаскивать, кроме текущего
+            const draggableElements = [...container.querySelectorAll('.image-container:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element || null; // Возвращаем null, если элемент не найден
+        }
+
+        // При отправке формы сохраняем новый порядок изображений
+        document.getElementById('product-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(this);
+
+            // Сохраняем новый порядок изображений
+            const photoOrder = [...sortable.children].map(container => container.getAttribute('data-id'));
+            formData.append('photo_order', JSON.stringify(photoOrder));
+
+            formData.append('temp_photo_paths', JSON.stringify(tempPhotoPaths));
+
+            fetch('/save_product', {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    alert('Ошибка при сохранении товара');
+                }
+            }).catch(err => {
+                console.error('Ошибка при сохранении товара:', err);
+            });
+        });
+
+        // Глобальные переменные
+        let cropper;
+        let tempPhotoPaths = [];
+        let selectedColor = 'default';
+
+        document.getElementById('edit-photo').addEventListener('change', function(event) {
+            const files = event.target.files;
+            for (let file of files) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    addCropModal(e.target.result, file);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function addCropModal(dataUrl, file) {
+            const modal = document.getElementById('crop-modal');
+            const cropImage = document.getElementById('crop-image');
+
+            // Очищаем предыдущий cropper
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+
+            // Сбрасываем src перед установкой нового
+            cropImage.src = '';
+
+            // Показываем модальное окно
+            modal.style.display = 'flex';
+
+            // Устанавливаем новый src
+            cropImage.src = dataUrl;
+
+            // Создаем новый cropper после загрузки изображения
+            cropImage.onload = function() {
+                cropper = new Cropper(cropImage, {
+                    aspectRatio: 3 / 4,
+                    viewMode: 1,
+                    autoCropArea: 1,
+                    ready: function() {
+                        // Вызываем adjustCanvasSize только после полной инициализации cropper
+                        setTimeout(adjustCanvasSize, 100);
+                    }
+                });
+            };
+
+            document.getElementById('crop-apply').onclick = function() {
+                cropImageAndSave(file);
+            };
+
+            document.getElementById('crop-cancel').onclick = function() {
+                closeCropModal();
+            };
+        }
+
+        function adjustCanvasSize() {
+            const modal = document.getElementById('crop-modal');
+            const cropperContainer = document.querySelector('.cropper-container');
+            const cropCanvas = document.querySelector('.cropper-canvas');
+
+            if (!modal || !cropperContainer || !cropCanvas) {
+                console.log('Элементы модального окна не найдены');
+                return;
+            }
+
+            try {
+                // Получаем размеры модального окна
+                const modalContent = modal.querySelector('.modal-content');
+                const modalWidth = modalContent.clientWidth;
+                const modalHeight = modalContent.clientHeight;
+
+                // Устанавливаем максимальные размеры для контейнера cropper
+                cropperContainer.style.maxWidth = '100%';
+                cropperContainer.style.maxHeight = '80vh';
+
+                // Обновляем размеры canvas
+                if (cropper) {
+                    cropper.crop();
+                }
+            } catch (error) {
+                console.error('Ошибка при настройке размеров:', error);
+            }
+        }
+
+        function closeCropModal() {
+            const modal = document.getElementById('crop-modal');
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            document.getElementById('crop-image').src = '';
+            modal.style.display = 'none';
+        }
+
+        // Обработчик изменения размера окна с debounce
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(adjustCanvasSize, 250);
+        });
+
+        function cropImageAndSave(file) {
+            if (!cropper) {
+                console.error('Cropper не инициализирован!');
+                return;
+            }
+
+            cropper.getCroppedCanvas().toBlob(function(blob) {
+                const tempFileName = `temp_${new Date().getTime()}.jpg`;
+                const croppedFile = new File([blob], tempFileName, { type: 'image/jpeg' });
+
+                // Создаем предварительный просмотр
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const container = document.createElement('div');
+                    container.className = 'image-container';
+                    container.draggable = true;
+                    container.dataset.id = tempFileName;
+
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'thumbnail';
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'delete-button';
+                    deleteButton.innerHTML = '&#x2716;';
+                    deleteButton.onclick = () => deleteImage(tempFileName);
+
+                    container.appendChild(img);
+                    container.appendChild(deleteButton);
+                    document.getElementById('photo-previews').appendChild(container);
+                };
+                reader.readAsDataURL(croppedFile);
+
+                uploadTempPhoto(croppedFile);
+                closeCropModal();
+            }, 'image/jpeg', 0.6);
+        }
+        function uploadTempPhoto(file) {
+            const formData = new FormData();
+            formData.append('photo', file);
+            formData.append('color', selectedColor);  // Передаем выбранный цвет
+            formData.append('product_id', document.querySelector('input[name="product_id"]').value);  // Передаем ID товара
+            fetch('/upload_temp_image', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.temp_photo_path) {
+                      console.log(`Временный файл загружен: ${data.temp_photo_path}`);
+                      tempPhotoPaths.push(data.temp_photo_path);  // Добавляем временный путь к массиву
+                  } else {
+                      console.error('Ошибка загрузки файла:', data.error);
+                  }
+              }).catch(err => console.error('Ошибка:', err));
+        }
+
+        function selectColor(element) {
+            const color = element.getAttribute('data-color') || 'default';
+            selectedColor = color;
+            document.querySelectorAll('.color-option').forEach(option => option.classList.remove('selected'));
+            element.classList.add('selected');
+            console.log(`Выбранный цвет: ${selectedColor}`);
+        }
+
+        function addRow() {
+            const table = document.getElementById('size-color-quantity-table').getElementsByTagName('tbody')[0];
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td><input type="text" name="sizes[]" ></td>
+                <td>
+                    <input type="text" name="colors[]" oninput="updateColor(this)">
+                    <div class="color-option" style="background-color: '';" data-color="" onclick="selectColor(this)"></div>
+                </td>
+                <td><input type="number" name="quantities[]" required></td>
+                <td><button type="button" onclick="removeRow(this)">&#x2716;</button></td>
+            `;
+            table.appendChild(newRow);
+        }
+
+        function removeRow(button) {
+            const row = button.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+        }
+
+        function deleteImage(imagePath) {
+            fetch(`/delete_image?image=${imagePath}`, {
+                method: 'DELETE'
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Ошибка при удалении изображения');
+                }
+            }).catch(err => { console.error('Ошибка при удалении изображения:', err);
+            });
+        }
+
+        // Устанавливаем атрибут 'color' для всех существующих цветов при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.color-option').forEach(option => {
+                const color = option.getAttribute('data-color') || 'default';
+                option.setAttribute('color', color);
+            });
+        });
+
+        function updateColor(input) {
+            const colorOption = input.nextElementSibling;
+            const color = input.value.trim();
+            const colorMap = {
+                'красный': 'red',
+                'синий': 'blue',
+                'желтый': 'yellow',
+                'зеленый': 'green',
+                'черный': 'black',
+                'белый': 'white',
+                'оранжевый': 'orange',
+                'фиолетовый': 'purple',
+                'розовый': 'pink',
+                'серый': 'gray',
+                'бежевый': 'beige'
+                // Добавьте другие цвета по мере необходимости
+            };
+            const translatedColor = colorMap[color.toLowerCase()] || color;
+            colorOption.style.backgroundColor = translatedColor || 'transparent';
+            colorOption.setAttribute('data-color', translatedColor || 'default'); // Устанавливаем актуальный цвет
+            colorOption.setAttribute('color', color); // Устанавливаем наименование цвета для выбора
+            selectColor(colorOption); // Выбираем цвет при изменении
+        }
+
+        function selectColor(element) {
+            const color = element.getAttribute('data-color') || 'default';
+
+            // Если цвет уже выбран, отменяем выбор
+            if (selectedColor === color) {
+                // Отменяем выбор
+                selectedColor = "default";
+                element.classList.remove('selected');  // Убираем выделение
+                console.log('Выбор отменен');
+            } else {
+                // Если это новый цвет, выбираем его
+                selectedColor = color;
+                document.querySelectorAll('.color-option').forEach(option => option.classList.remove('selected'));
+                element.classList.add('selected');  // Добавляем выделение
+                console.log(`Выбранный цвет: ${selectedColor}`);
+            }
+        }
+    </script>
+    <script src="/static/js/theme-switcher.js" defer></script>
+</body>
+</html>

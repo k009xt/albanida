@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Отчет по продажам{% endblock %}
+
+{% block content %}
+    <h1>Отчет по продажам</h1>
+
+    <!-- Фильтр по диапазону дат -->
+    <form method="post" action="/sales_report">
+        <label for="start_date">Начальная дата:</label>
+        <input type="date" id="start_date" name="start_date">
+        <label for="end_date">Конечная дата:</label>
+        <input type="date" id="end_date" name="end_date">
+        <button type="submit">Фильтровать</button>
+    </form>
+
+    <!-- Сводная информация -->
+    <div class="summary">
+        <p><strong>Сумма всех проданных товаров по закупочной цене:</strong> {{ summary.total_cost_price }} рублей</p>
+        <p><strong>Сумма всех проданных товаров по продажной цене:</strong> {{ summary.total_sale_price }} рублей</p>
+        <p><strong>Сумма выручки по всем продажам:</strong> {{ summary.total_revenue }} рублей</p>
+    </div>
+
+    <!-- Таблица с данными из sales.xlsx -->
+    <table class="sales-table">
+        <thead>
+            <tr>
+                {% for col in data[0].keys() %}
+                    <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+                <tr>
+                    {% for cell in row.values() %}
+                        <td>{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Кнопка для выгрузки таблицы -->
+    <form method="post" action="/download_sales_excel">
+        <input type="hidden" name="start_date" value="{{ start_date }}">
+        <input type="hidden" name="end_date" value="{{ end_date }}">
+        <button type="submit">Выгрузить таблицу</button>
+    </form>
+{% endblock %}

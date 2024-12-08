@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Корзина{% endblock %}
+
+{% block content %}
+<a href="/" class="back-button">Назад</a>
+<h1>Корзина</h1>
+<div id="cart-items"></div>
+<script>
+    // Загрузка корзины
+    function loadCart() {
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+        const cartContainer = document.getElementById('cart-items');
+        cartContainer.innerHTML = '';
+
+        if (cart.length === 0) {
+            cartContainer.innerHTML = '<p>Корзина пуста.</p>';
+            return;
+        }
+
+        cart.forEach((item, index) => {
+            const itemElement = document.createElement('div');
+            itemElement.classList.add('cart-item');
+            itemElement.innerHTML = `
+            <div class="cart-item-content">
+                <div class="cart-item-details">
+                    <strong>${item.name}</strong>
+                    ${item.size !== 'default' ? `<p>Размер: ${item.size}</p>` : ''}
+                    ${item.color !== 'default' ? `<p>Цвет: ${item.color}</p>` : ''}
+                    <p>Количество: ${item.quantity}</p>
+                    <p>Цена: ${item.price} руб.</p>
+                    <button onclick="removeFromCart(${index})">Удалить</button>
+                </div>
+                <img src="${item.image}" alt="${item.name}" class="cart-thumbnail">
+            </div>
+            `;
+            cartContainer.appendChild(itemElement);
+        });
+    }
+
+    // Удаление товара из корзины
+    function removeFromCart(index) {
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+        cart.splice(index, 1);
+        localStorage.setItem('cart', JSON.stringify(cart));
+        loadCart();
+    }
+
+    document.addEventListener('DOMContentLoaded', loadCart);
+</script>
+
+{% endblock %}
