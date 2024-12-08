@@ -1,5 +1,5 @@
 .product-info {
-    font-family: "Baloo 2", sans-serif; /* Шрифт Comic Sans MS */
+    font-family: 'Baloo 2', 'Roboto', sans-serif; /* Шрифт Comic Sans MS */
     font-size: 14px; /* Размер шрифта уменьшен */
     text-align: center; /* Центрирование текста */
     word-wrap: break-word; /* Перенос слов, если текст длинный */
@@ -31,27 +31,27 @@
 
 /* Применяем шрифт Comic Sans MS ко всему контенту */
 body {
-    font-family: 'Baloo 2', cursive, sans-serif!important;
+    font-family: 'Baloo 2', sans-serif!important;
 }
 
 /* Применяем шрифт к заголовкам, если они не наследуют от body */
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'Baloo 2', cursive, sans-serif !important;
+    font-family: 'Baloo 2', sans-serif !important;
 }
 
 /* Применяем шрифт к кнопкам */
 button, .modal-button {
-    font-family: 'Baloo 2', cursive, sans-serif!important;
+    font-family: 'Baloo 2', sans-serif!important;
 }
 
 /* Применяем шрифт к ссылкам */
 a {
-    font-family: 'Baloo 2', cursive, sans-serif!important;
+    font-family: 'Baloo 2', sans-serif!important;
 }
 
 /* Применяем шрифт к текстовым полям и формулам */
 input, textarea, select {
-    font-family: 'Baloo 2', cursive, sans-serif!important;
+    font-family: 'Baloo 2', sans-serif!important;
 }
 
 .product-info h2 {
