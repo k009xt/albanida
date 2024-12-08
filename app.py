@@ -368,7 +368,7 @@ def product(product_id):
 
     # Ссылка на WhatsApp
     seller_phone = "79280544578"  # Ваш номер телефона
-    product_url = url_for('product_page', product_id=product_data['id'],
+    product_url = url_for('product', product_id=product_data['id'],
                           _external=True)  # Генерируем URL страницы товара
     whatsapp_message = f"Здравствуйте! Я хочу купить товар: {product_data['name']} (ID: {product_data['id']}). Ссылка: {product_url}"
     whatsapp_link = f"https://wa.me/{seller_phone}?text={whatsapp_message}"
