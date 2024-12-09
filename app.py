@@ -1,6 +1,8 @@
 import os
 import shutil
 import tempfile
+import urllib
+
 from flask import Flask, render_template, request, redirect, url_for, session, send_file
 import pandas as pd
 import json
@@ -329,24 +331,24 @@ def save_product():
     return redirect(url_for('edit_product', product_id=new_id))
 
 
-
 @app.route('/product/<product_id>')
 def product(product_id):
     product_row = df[df['ID'].astype(str) == str(product_id)]
     if product_row.empty:
         return render_template('error.html', message='Товар не найден.')
+
     product_row = product_row.iloc[0]
 
     product_data = {
-        'id': str(product_row['ID']),  # Преобразование в строку
+        'id': str(product_row['ID']),
         'name': product_row['Наименование_товара'],
-        'price': int(product_row['Цена']),  # Преобразование в стандартный int
+        'price': int(product_row['Цена']),
         'description': product_row['Описание'],
-        'sizes_and_quantities': json.loads(product_row['Размеры_и_количество']),
+        'sizes_and_quantities': json.loads(product_row.get('Размеры_и_количество', '{}')),
         'additional_info': {
             'gender': product_row['Пол'],
             'season': product_row['Сезон'],
-            'category': product_row.get('Категория', 'не указано')  # Добавляем категорию
+            'category': product_row.get('Категория', 'не указано')
         }
     }
 
@@ -359,24 +361,23 @@ def product(product_id):
     unique_colors = set()
     for size, colors in product_data['sizes_and_quantities'].items():
         for color, quantity in colors.items():
-            if quantity > 0:
-                if color and color != 'default':
-                    unique_colors.add(color)
+            if quantity > 0 and color != 'default':
+                unique_colors.add(color)
 
-    # Преобразуем все значения в сериализуемые типы
     product_data = convert_to_serializable(product_data)
 
-    # Ссылка на WhatsApp
-    seller_phone = "79280544578"  # Ваш номер телефона
-    product_url = url_for('product', product_id=product_data['id'],
-                          _external=True)  # Генерируем URL страницы товара
-    whatsapp_message = f"Здравствуйте! Я хочу купить товар: {product_data['name']} (ID: {product_data['id']}). Ссылка: {product_url}"
-    whatsapp_link = f"https://wa.me/{seller_phone}?text={whatsapp_message}"
+    seller_phone = "79280544578"
+    product_url = url_for('product', product_id=product_data['id'], _external=True)
+    whatsapp_message = f"Здравствуйте! Я хочу купить товар: {product_data['name']}.\nСсылка: {product_url}"
+    whatsapp_link = f"https://wa.me/{seller_phone}?text={urllib.parse.quote(whatsapp_message)}"
 
-    return render_template('product.html',
-                           product=product_data,
-                           uniqueColors=unique_colors,
-                           whatsapp_link=whatsapp_link)
+    return render_template(
+        'product.html',
+        product=product_data,
+        uniqueColors=unique_colors,
+        whatsapp_link=whatsapp_link  # Передаем ссылку в шаблон
+    )
+
 
 @app.route('/api/product/<product_id>')
 def api_product(product_id):
@@ -854,10 +855,8 @@ def download_sales_excel():
     return send_file(output, download_name='filtered_sales.xlsx', as_attachment=True)
 
 
-if __name__ == '__main__':
-    # Получаем порт из переменной окружения или используем 5000 по умолчанию
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+if __name__ == "__main__":
+    app.run(debug=True, use_reloader=False)
 
 #from werkzeug.security import generate_password_hash
 #print(generate_password_hash("ваш_пароль"))
