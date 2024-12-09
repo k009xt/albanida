@@ -488,7 +488,39 @@
     document.addEventListener('DOMContentLoaded', function () {
         updateCartButton();
     });
+
 </script>
+
+
+<script>
+    function buyViaWhatsApp() {
+        // Проверка выбранного размера
+        const selectedSizeEl = document.querySelector('.size-swatch.selected');
+        const selectedSize = selectedSizeEl ? selectedSizeEl.innerText : 'default';
+
+        // Проверка выбранного цвета
+        const selectedColorEl = document.querySelector('.color-swatch.selected');
+        const selectedColor = selectedColorEl ? selectedColorEl.dataset.color : 'default';
+
+        // Проверка доступности товара
+        const quantity = product['sizes_and_quantities'][selectedSize]?.[selectedColor] || 0;
+        if (quantity <= 0) {
+            alert('Необходимо выбрать размер или цвет товара.');
+            return;
+        }
+
+        // Формирование сообщения для WhatsApp
+        const message = `Здравствуйте! Я хочу купить товар: ${product['name']}.\n` +
+                        `Размер: ${selectedSize !== 'default' ? selectedSize : 'не указан'}.\n` +
+                        `Цвет: ${selectedColor !== 'default' ? selectedColor : 'не указан'}.\n` +
+                        `Цена: ${product['price']} руб.`;
+
+        // Открытие WhatsApp с сообщением
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
+    }
+</script>
+
     <!-- Кнопка "Назад" -->
     <a href="/" class="back-button">Назад</a>
     <h1>{{ product['name'] }}</h1>
@@ -566,8 +598,6 @@
             <span class="cart-quantity">0</span>
             <button class="quantity-plus" onclick="increaseCartQuantity()">+</button>
         </div>
-        <a href="{{ whatsapp_link }}" target="_blank" class="whatsapp-button">
-            Купить через WhatsApp
-        </a>
+        <button class="buy-whatsapp-btn" onclick="buyViaWhatsApp()">Купить через WhatsApp</button>
     </div>
 {% endblock %}
