@@ -855,8 +855,10 @@ def download_sales_excel():
     return send_file(output, download_name='filtered_sales.xlsx', as_attachment=True)
 
 
-if __name__ == "__main__":
-    app.run(debug=True, use_reloader=False)
+if __name__ == '__main__':
+    # Получаем порт из переменной окружения или используем 5000 по умолчанию
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
 
 #from werkzeug.security import generate_password_hash
 #print(generate_password_hash("ваш_пароль"))
