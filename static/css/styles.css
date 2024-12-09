@@ -1099,7 +1099,31 @@ body.dark-mode .product-img {
         display: none;
     }
 }
+/* Контейнер для таблицы с горизонтальным скроллом */
+.table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 10px;
+    margin-bottom: 20px;
+}
 
+/* Стили таблицы */
+.product-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.product-table th,
+.product-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+.product-table th {
+    background-color: #f4f4f4;
+}
 
 .additional-info-link {
     color: #007BFF;
@@ -1116,7 +1140,7 @@ body.dark-mode .product-img {
     gap: 10px;
 }
 
-.cart-button, .whatsapp-button {
+.cart-button, .buy-whatsapp-btn {
     padding: 10px 20px;
     width: 80%;
     border: none;
@@ -1130,8 +1154,8 @@ body.dark-mode .product-img {
     color: white;
 }
 
-.whatsapp-button {
-    background-color: #25D366;
+.buy-whatsapp-btn {
+    background-color: #25D366!important;
     color: white;
     text-decoration: none;
 }
@@ -1292,7 +1316,7 @@ body.dark-mode .cart-item-content {
 
 .social-links a {
     display: inline-block; /* Устанавливаем отображение в строку */
-    margin-top: 20px;
+    margin-top: 40px;
     margin-right: 15px;
     text-decoration: none;
     line-height: 0; /* Убираем влияние высоты строки */
@@ -1566,5 +1590,22 @@ body.dark-mode .product-table th, .sales-table th {
     padding: 10px;
     cursor: pointer;
     z-index: 10;
+}
+
+.cbs-logo {
+    display: block;
+    margin: 0 auto; /* Центрирование по горизонтали */
+    width: 150px; /* Размер логотипа */
+    height: auto;
+    padding-top: 50px;
+}
+
+@media (max-width: 768px) { /* Для экранов с шириной 768px и меньше */
+    .cbs-logo {
+        margin: 20px auto; /* Центрирование по горизонтали и добавление отступов */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
 }
 
