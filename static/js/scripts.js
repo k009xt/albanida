@@ -1,15 +1,17 @@
-            // Функции перехода по кнопкам
+            // Р¤СѓРЅРєС†РёРё РїРµСЂРµС…РѕРґР° РїРѕ РєРЅРѕРїРєР°Рј
             window.goHome = function () {
-                window.location.href = '/'; // Переход на главную страницу
+                window.location.href = '/'; // РџРµСЂРµС…РѕРґ РЅР° РіР»Р°РІРЅСѓСЋ СЃС‚СЂР°РЅРёС†Сѓ
             };
 
             window.goToCart = function () {
-                window.location.href = '/cart'; // Переход в корзину
+                window.location.href = '/cart'; // РџРµСЂРµС…РѕРґ РІ РєРѕСЂР·РёРЅСѓ
             };
 
             window.viewOrders = function () {
-                window.location.href = '/orders'; // Переход в раздел заказов
+                // window.location.href = '/orders'; // РџРµСЂРµС…РѕРґ РІ СЂР°Р·РґРµР» Р·Р°РєР°Р·РѕРІ
+                alert('Р Р°Р·РґРµР» Р·Р°РєР°Р·РѕРІ РµС‰С‘ РЅРµ СЃРѕР·РґР°РЅ!');
             };
+
             let lastScrollTop = 0;
             const mobileNav = document.getElementById('mobileNav');
 
