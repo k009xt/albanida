@@ -491,7 +491,6 @@
 
 </script>
 
-
 <script>
     function buyViaWhatsApp() {
         // Проверка выбранного размера
@@ -509,14 +508,20 @@
             return;
         }
 
-        // Формирование сообщения для WhatsApp
+        // Декодируем URL страницы товара
+        const productUrl = decodeURIComponent("{{ url_for('product', product_id=product['id'], _external=True) }}");
+
+        // Формирование сообщения для WhatsApp с явной ссылкой
         const message = `Здравствуйте! Я хочу купить товар: ${product['name']}.\n` +
                         `Размер: ${selectedSize !== 'default' ? selectedSize : 'не указан'}.\n` +
                         `Цвет: ${selectedColor !== 'default' ? selectedColor : 'не указан'}.\n` +
-                        `Цена: ${product['price']} руб.`;
+                        `Цена: ${product['price']} руб.\n` +
+                        `Ссылка на товар: ${productUrl}`;
 
-        // Открытие WhatsApp с сообщением
-        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        // Формируем корректный URL WhatsApp
+        const whatsappUrl = `https://wa.me/79280544578?text=${encodeURIComponent(message)}`;
+
+        // Открываем ссылку
         window.open(whatsappUrl, '_blank');
     }
 </script>
