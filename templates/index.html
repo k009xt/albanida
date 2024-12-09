@@ -287,18 +287,20 @@
         <a href="/all_products">Все товары</a>
         <a href="/sales_report">Отчет по продажам</a>
     </div>
-
+    {% if role == 'admin' %}
     <span class="menu-icon" onclick="openNav()">&#9776;</span>
+    {% endif %}
     <footer>
         <div class="social-links">
-            <a href="https://www.avito.ru/user/588904bdd44deff35a9611b16917232a/profile?src=sharing" target="_blank">
+            <!--<a href="https://www.avito.ru/user/588904bdd44deff35a9611b16917232a/profile?src=sharing" target="_blank">
                 <img src="/static/css/avito.png" alt="Авито" class="social-logo">
-            </a>
+            </a>-->
             <a href="https://www.instagram.com/albanida.kids?igsh=MTF4OWpxMGhsaWdmaA==" target="_blank">
                 <img src="/static/css/instagram.png" alt="Инстаграм" class="social-logo">
             </a>
         </div>
         <p>© 2024 Albanida.kids</p>
+        <p><img src="/static/css/my_logo.png" alt="cbs" class="cbs-logo"></p>
     </footer>
     <script>
         function openNav() {
@@ -394,7 +396,48 @@
                 const productName = tile.getAttribute('onclick').match(/'([^']+)'/)[1];
                 handleSwipe(tile, productName);
             });
+
+            const logo = document.querySelector('.cbs-logo');
+            if (logo) {
+                logo.addEventListener('click', function (event) {
+                    event.stopPropagation();
+
+                    // Проверяем, есть ли уже отображённое сообщение
+                    if (document.querySelector('.message-box')) {
+                        return; // Если есть, ничего не делаем
+                    }
+
+                    // Создаем всплывающее сообщение
+                    const messageBox = document.createElement('div');
+                    messageBox.textContent = 'Создание веб приложений эл. почта: kxt009@yandex.ru';
+                    messageBox.classList.add('message-box');
+                    Object.assign(messageBox.style, {
+                        position: 'fixed',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        background: 'rgba(0, 0, 0, 0.8)',
+                        color: 'white',
+                        padding: '20px',
+                        borderRadius: '10px',
+                        textAlign: 'center',
+                        zIndex: '1000',
+                        display: 'block',
+                    });
+
+                    document.body.appendChild(messageBox);
+
+                    // Удаление сообщения при клике в любом другом месте
+                    const removeMessage = function () {
+                        messageBox.remove();
+                        document.removeEventListener('click', removeMessage);
+                    };
+
+                    document.addEventListener('click', removeMessage, { once: true });
+                });
+            }
         });
+
     </script>
     <!-- Модальное окно для продажи товара -->
     <div class="modal fade" id="sellModal" tabindex="-1" aria-labelledby="sellModalLabel" aria-hidden="true">
