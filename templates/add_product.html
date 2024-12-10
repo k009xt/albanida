@@ -354,14 +354,6 @@
             }, 'image/jpeg', 0.6);
         }
 
-        function selectColor(element) {
-            const color = element.getAttribute('data-color') || 'default';
-            selectedColor = color;
-            document.querySelectorAll('.color-option').forEach(option => option.classList.remove('selected'));
-            element.classList.add('selected');
-            console.log(`Выбранный цвет: ${selectedColor}`);
-        }
-
         function addRow() {
             const table = document.getElementById('size-color-quantity-table').getElementsByTagName('tbody')[0];
             const newRow = document.createElement('tr');
